@@ -48,7 +48,7 @@ Route::middleware('auth')->group(function () {
     // -----------------------------------------------------------------------
     Route::middleware('role:pimpinan')->prefix('pimpinan')->name('pimpinan.')->group(function () {
         Route::get('/laporan-eksekutif', [ReportController::class, 'executiveReport'])->name('executive-report');
-        Route::get('/statistik-stok-kritis', [ReportController::class, 'criticalStockStats'])->name('critical-stock-stats');
+        Route::get('/statistik-stok-kritis', [ReportController::class, 'executiveReport'])->name('critical-stock-stats');
         Route::get('/monitoring-expired-detail', [StockBatchController::class, 'expiryMonitorDetail'])->name('expiry-monitor-detail');
         Route::get('/pengaturan-harga', [AdminController::class, 'priceSettings'])->name('price-settings');
         Route::post('/pengaturan-harga', [AdminController::class, 'updatePriceSettings'])->name('update-price-settings');
@@ -61,6 +61,10 @@ Route::middleware('auth')->group(function () {
     // -----------------------------------------------------------------------
     Route::middleware('role:tim_it')->prefix('tim-it')->name('tim-it.')->group(function () {
         Route::get('/user-management', [AdminController::class, 'userManagement'])->name('user-management');
+        Route::post('/user-management', [AdminController::class, 'storeUser'])->name('user-management.store');
+        Route::put('/user-management/{user}', [AdminController::class, 'updateUser'])->name('user-management.update');
+        Route::delete('/user-management/{user}', [AdminController::class, 'deleteUser'])->name('user-management.destroy');
+        
         Route::get('/system-maintenance', [AdminController::class, 'systemMaintenance'])->name('system-maintenance');
         Route::get('/audit-logs', [AdminController::class, 'auditLogs'])->name('audit-logs');
         Route::get('/system-testing', [AdminController::class, 'systemTesting'])->name('system-testing');
@@ -132,6 +136,7 @@ Route::middleware('auth')->group(function () {
     // LAPORAN (Pimpinan & Manager)
     Route::middleware('role:pimpinan,manager')->prefix('laporan')->name('laporan.')->group(function () {
         Route::get('/laba-rugi', [SaleController::class, 'profitReport'])->name('laba-rugi');
+        Route::get('/eksekutif', [ReportController::class, 'executiveReport'])->name('eksekutif');
     });
 
 });

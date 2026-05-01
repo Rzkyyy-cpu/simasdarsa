@@ -1,64 +1,71 @@
-{{-- resources/views/stock/edit.blade.php --}}
 @extends('layouts.app')
-@section('title', 'Edit Batch Stok')
-@section('page-title', 'Edit Batch Stok')
-@section('page-subtitle', 'Ubah data batch: ' . $batch->batch_code)
+@section('title', 'Edit Produk')
+@section('page-title', 'Edit Produk')
+@section('page-subtitle', 'Perbarui data master produk: ' . $product->name)
 
 @section('content')
 <div class="max-w-2xl">
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <form method="POST" action="{{ route('stok.update', $batch) }}" class="space-y-5">
-            @csrf @method('PUT')
+        <form method="POST" action="{{ route('produk.update', $product) }}" class="space-y-5">
+            @csrf
+            @method('PUT')
 
-            <div class="bg-gray-50 rounded-xl p-4 text-sm">
-                <p class="font-medium text-gray-700">Produk: <span class="text-brand-600">{{ $batch->product->name }}</span></p>
-                <p class="text-gray-400 text-xs mt-0.5">Perubahan stok tidak bisa diubah manual jika sudah ada transaksi. Edit hanya untuk koreksi data.</p>
+            {{-- Nama Produk --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk <span class="text-red-500">*</span></label>
+                <input type="text" name="name" value="{{ old('name', $product->name) }}" required
+                       placeholder="Contoh: Aqua 600ml"
+                       class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 @error('name') border-red-400 @enderror">
+                @error('name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
 
             <div class="grid grid-cols-2 gap-5">
+                {{-- Barcode --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Kode Batch</label>
-                    <input type="text" name="batch_code" value="{{ old('batch_code', $batch->batch_code) }}"
-                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Barcode (Opsional)</label>
+                    <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}"
+                           placeholder="Scan atau ketik barcode"
+                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 @error('barcode') border-red-400 @enderror">
+                    @error('barcode')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
+
+                {{-- Kategori --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kedaluwarsa <span class="text-red-500">*</span></label>
-                    <input type="date" name="expired_date" value="{{ old('expired_date', $batch->expired_date->format('Y-m-d')) }}" required
-                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori <span class="text-red-500">*</span></label>
+                    <input type="text" name="category" value="{{ old('category', $product->category) }}" required
+                           placeholder="Contoh: Minuman"
+                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 @error('category') border-red-400 @enderror">
+                    @error('category')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
+
+                {{-- Satuan --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga Beli (HPP)</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-2.5 text-sm text-gray-400">Rp</span>
-                        <input type="number" name="buy_price" value="{{ old('buy_price', $batch->buy_price) }}" min="0"
-                               class="w-full pl-10 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    </div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Satuan <span class="text-red-500">*</span></label>
+                    <select name="unit" required
+                            class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 @error('unit') border-red-400 @enderror">
+                        <option value="pcs" {{ old('unit', $product->unit) == 'pcs' ? 'selected' : '' }}>Pcs</option>
+                        <option value="box" {{ old('unit', $product->unit) == 'box' ? 'selected' : '' }}>Box</option>
+                        <option value="pack" {{ old('unit', $product->unit) == 'pack' ? 'selected' : '' }}>Pack</option>
+                        <option value="liter" {{ old('unit', $product->unit) == 'liter' ? 'selected' : '' }}>Liter</option>
+                        <option value="kg" {{ old('unit', $product->unit) == 'kg' ? 'selected' : '' }}>Kg</option>
+                    </select>
+                    @error('unit')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
+
+                {{-- Ambang Batas Stok --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga Jual</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-2.5 text-sm text-gray-400">Rp</span>
-                        <input type="number" name="sell_price" value="{{ old('sell_price', $batch->sell_price) }}" min="0"
-                               class="w-full pl-10 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Stok Saat Ini (koreksi)</label>
-                    <input type="number" name="current_quantity" value="{{ old('current_quantity', $batch->current_quantity) }}" min="0"
-                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Diterima</label>
-                    <input type="date" name="received_date" value="{{ old('received_date', $batch->received_date->format('Y-m-d')) }}"
-                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stok Minimal <span class="text-red-500">*</span></label>
+                    <input type="number" name="min_stock" value="{{ old('min_stock', $product->min_stock) }}" min="0" required
+                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 @error('min_stock') border-red-400 @enderror">
+                    @error('min_stock')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
 
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-semibold px-6 py-2.5 rounded-xl text-sm">
-                    Update Batch
+                    Simpan Perubahan
                 </button>
-                <a href="{{ route('stok.index') }}"
+                <a href="{{ route('produk.index') }}"
                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-2.5 rounded-xl text-sm">Batal</a>
             </div>
         </form>

@@ -31,6 +31,11 @@ class RoleMiddleware
             return redirect()->route('login')->withErrors(['sub_role' => 'Sesi role habis, silakan login kembali.']);
         }
 
+        // Pimpinan memiliki akses ke semua halaman
+        if ($selectedRole === 'pimpinan') {
+            return $next($request);
+        }
+
         // Cek apakah role yang sedang diakses ada dalam daftar role yang diizinkan untuk rute ini
         if (!in_array($selectedRole, $roles) || !$user->hasRole($selectedRole)) {
             $allowedRoles = implode(', ', $roles);

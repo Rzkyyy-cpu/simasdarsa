@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -44,16 +45,8 @@ class ProductController extends Controller
 
         // Ambil daftar kategori untuk filter dropdown
         $categories = Product::distinct()->orderBy('category')->pluck('category');
-        $batches = \App\Models\StockBatch::with('product')
-        ->when($request->filled('q'), function($query) use ($request) {
-            $query->where('batch_code', 'like', "%{$request->q}%")
-                  ->orWhereHas('product', function($q) use ($request) {
-                      $q->where('name', 'like', "%{$request->q}%");
-                  });
-        })
-        ->orderBy('expired_date', 'asc')
-        ->paginate(15); // Menggunakan paginate agar method hasPages() di Blade bekerja
-        return view('products.index', compact('products', 'categories', 'batches'));
+
+        return view('products.index', compact('products', 'categories'));
     }
 
     /** Form tambah produk baru */
@@ -80,40 +73,46 @@ class ProductController extends Controller
     }
 
     /** Detail produk beserta semua batch stok (urut FEFO) */
-    public function show(Product $product)
+    public function show(Product $produk)
     {
-        $product->load(['stockBatches' => fn($q) => $q->orderBy('expired_date')]);
-        return view('products.show', compact('product'));
+        $produk->load(['stockBatches' => fn($q) => $q->orderBy('expired_date')]);
+        return view('products.show', ['product' => $produk]);
     }
 
     /** Form edit produk */
-    public function edit(Product $product)
+    public function edit(Product $produk)
     {
-        return view('products.edit', compact('product'));
+        return view('products.edit', ['product' => $produk]);
     }
 
     /** Update data produk */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, Product $produk)
     {
         $validated = $request->validate([
             'name'      => 'required|string|max:200',
-            'barcode'   => "nullable|string|max:50|unique:products,barcode,{$product->id}",
+            'barcode'   => "nullable|string|max:50|unique:products,barcode,{$produk->id}",
             'category'  => 'required|string|max:100',
             'unit'      => 'required|string|max:30',
             'min_stock' => 'required|integer|min:0',
         ]);
 
-        $product->update($validated);
+        $produk->update($validated);
 
         return redirect()->route('produk.index')
-                         ->with('success', "Produk '{$product->name}' berhasil diperbarui.");
+                         ->with('success', "Produk '{$produk->name}' berhasil diperbarui.");
     }
 
     /** Soft delete produk */
-    public function destroy(Product $product)
+    public function destroy(Product $produk)
     {
-        $product->delete();
+        $productName = $produk->name;
+        $productId = $produk->id;
+        $user = auth()->user();
+
+        $produk->delete();
+        Log::info("AUDIT_LOG: PRODUCT DELETED - Product: {$productName} (ID: {$productId}), User: {$user->name} ({$user->email})");
+        
         return redirect()->route('produk.index')
-                         ->with('success', "Produk '{$product->name}' berhasil dihapus.");
+                         ->with('success', "Produk '{$productName}' berhasil dihapus.");
     }
 }

@@ -93,40 +93,79 @@
 
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Inventori</p>
 
-            {{-- Produk (Manager, Tim IT) --}}
-            @php $canProduk = in_array(session('selected_role'), ['manager', 'tim_it']); @endphp
+            {{-- Produk (Manager, Tim IT, Pimpinan) --}}
+            @php $canProduk = in_array(session('selected_role'), ['manager', 'tim_it', 'pimpinan']); @endphp
             <a href="{{ route('produk.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('produk.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canProduk ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Manajemen Produk</span>
                 @if(!$canProduk) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            {{-- Stok (Manager, Kasir) --}}
-            @php $canStok = in_array(session('selected_role'), ['manager', 'kasir']); @endphp
+            {{-- Stok (Manager, Kasir, Pimpinan) --}}
+            @php $canStok = in_array(session('selected_role'), ['manager', 'kasir', 'pimpinan']); @endphp
             <a href="{{ route('stok.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('stok.index') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canStok ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Batch Stok</span>
                 @if(!$canStok) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
+            {{-- Monitoring Kedaluarsa (Manager, Kasir, Pimpinan) --}}
+            @php $canExpiry = in_array(session('selected_role'), ['manager', 'kasir', 'pimpinan']); @endphp
+            <a href="{{ route('stok.expiry-monitor') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('stok.expiry-monitor') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canExpiry ? 'restricted' : '' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Monitoring Kedaluarsa</span>
+                @if(!$canExpiry) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+            </a>
+
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Transaksi</p>
 
-            {{-- Kasir (Kasir Only) --}}
-            @php $canPOS = session('selected_role') === 'kasir'; @endphp
+            {{-- Kasir (Kasir, Pimpinan) --}}
+            @php $canPOS = in_array(session('selected_role'), ['kasir', 'pimpinan']); @endphp
             <a href="{{ route('kasir.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('kasir.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canPOS ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Kasir (POS)</span>
                 @if(!$canPOS) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
+            {{-- Riwayat Penjualan (Manager, Kasir, Pimpinan) --}}
+            @php $canHistory = in_array(session('selected_role'), ['manager', 'kasir', 'pimpinan']); @endphp
+            <a href="{{ route('penjualan.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('penjualan.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canHistory ? 'restricted' : '' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Riwayat Penjualan</span>
+                @if(!$canHistory) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+            </a>
+
             {{-- Laporan (Pimpinan, Manager) --}}
             @php $canLaporan = in_array(session('selected_role'), ['pimpinan', 'manager']); @endphp
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Analitik</p>
-            <a href="{{ route('laporan.laba-rugi') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canLaporan ? 'restricted' : '' }}">
+            
+            <a href="{{ route('laporan.eksekutif') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.eksekutif') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canLaporan ? 'restricted' : '' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Laporan Eksekutif</span>
+                @if(!$canLaporan) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+            </a>
+
+            <a href="{{ route('laporan.laba-rugi') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.laba-rugi') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canLaporan ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Laba Rugi</span>
                 @if(!$canLaporan) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
+
+            {{-- Tim IT (Tim IT, Pimpinan) --}}
+            @php $canIT = in_array(session('selected_role'), ['tim_it', 'pimpinan']); @endphp
+            @if($canIT)
+            <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Administrasi Sistem</p>
+            
+            <a href="{{ route('tim-it.user-management') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('tim-it.user-management') ? 'active' : 'text-brand-100 hover:bg-white/10' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">User Management</span>
+            </a>
+
+            <a href="{{ route('tim-it.audit-logs') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('tim-it.audit-logs') ? 'active' : 'text-brand-100 hover:bg-white/10' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Audit Log Activity</span>
+            </a>
+            @endif
         </nav>
 
         {{-- Logout Sidebar --}}

@@ -8,103 +8,127 @@ use App\Models\Product;
 use App\Models\StockBatch;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
     /**
-     * Executive Report - Pimpinan
+     * Laporan Terpadu: Eksekutif & Stok Kritis
      */
-    public function executiveReport()
+    public function executiveReport(Request $request)
     {
-        // Monthly sales data for the last 12 months
-        $monthlySales = Sale::select(
-            DB::raw('YEAR(created_at) as year'),
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw('SUM(total_amount) as total_sales'),
-            DB::raw('COUNT(*) as total_transactions')
-        )
-        ->where('created_at', '>=', Carbon::now()->subMonths(12))
-        ->groupBy('year', 'month')
-        ->orderBy('year', 'desc')
-        ->orderBy('month', 'desc')
-        ->get();
+        $startDate = $request->get('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->get('end_date', now()->toDateString());
 
-        // Top selling products
-        $topProducts = Sale::join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
-            ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select(
-                'products.name',
-                DB::raw('SUM(sale_details.quantity) as total_quantity'),
-                DB::raw('SUM(sale_details.subtotal) as total_revenue')
-            )
-            ->where('sales.created_at', '>=', Carbon::now()->subMonths(3))
-            ->groupBy('products.id', 'products.name')
-            ->orderBy('total_revenue', 'desc')
-            ->limit(10)
+        // 1. Ringkasan Eksekutif (Finansial)
+        $summary = Sale::join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
+            ->selectRaw('
+                COUNT(DISTINCT sales.id) as total_transactions,
+                SUM(sale_details.subtotal) as total_revenue,
+                SUM((sale_details.price_at_sale - sale_details.buy_price_at_sale) * sale_details.quantity) as total_profit
+            ')
+            ->whereBetween('sales.sale_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->first();
+
+        // 2. Statistik Stok Kritis (Produk dengan total stok <= min_stock)
+        $criticalProducts = Product::select('products.*')
+            ->selectRaw('
+                COALESCE((
+                    SELECT SUM(sb.current_quantity)
+                    FROM stock_batches sb
+                    WHERE sb.product_id = products.id
+                      AND sb.current_quantity > 0
+                      AND sb.expired_date >= CURDATE()
+                ), 0) as total_stock
+            ')
+            ->havingRaw('total_stock <= products.min_stock')
+            ->orderBy('total_stock', 'asc')
             ->get();
 
-        // Profit margin calculation
-        $totalRevenue = Sale::where('created_at', '>=', Carbon::now()->startOfMonth())->sum('total_amount');
-        $totalCost = StockBatch::sum(DB::raw('purchase_price * current_stock'));
-        $profitMargin = $totalRevenue > 0 ? (($totalRevenue - $totalCost) / $totalRevenue) * 100 : 0;
+        // 3. Batch Hampir Kedaluwarsa (<= 30 hari)
+        $expiringBatches = StockBatch::whereHas('product')
+            ->with('product')
+            ->where('current_quantity', '>', 0)
+            ->whereBetween('expired_date', [now()->toDateString(), now()->addDays(30)->toDateString()])
+            ->orderBy('expired_date', 'asc')
+            ->get();
 
-        return view('pimpinan.executive-report', compact(
-            'monthlySales',
-            'topProducts',
-            'totalRevenue',
-            'profitMargin'
+        // Cek jika request adalah untuk export CSV
+        if ($request->has('export')) {
+            return $this->exportToCsv($summary, $criticalProducts, $expiringBatches, $startDate, $endDate);
+        }
+
+        return view('reports.executive', compact(
+            'summary', 
+            'criticalProducts', 
+            'expiringBatches',
+            'startDate',
+            'endDate'
         ));
     }
 
     /**
-     * Critical Stock Statistics - Pimpinan
+     * Export data ke CSV
      */
-    public function criticalStockStats()
+    private function exportToCsv($summary, $criticalProducts, $expiringBatches, $startDate, $endDate)
     {
-        // Products with low stock (less than 10 units)
-        $criticalStock = StockBatch::join('products', 'stock_batches.product_id', '=', 'products.id')
-            ->select(
-                'products.name',
-                'products.sku',
-                DB::raw('SUM(stock_batches.current_stock) as total_stock'),
-                DB::raw('MIN(stock_batches.expiry_date) as earliest_expiry')
-            )
-            ->groupBy('products.id', 'products.name', 'products.sku')
-            ->having('total_stock', '<', 10)
-            ->orderBy('total_stock', 'asc')
-            ->get();
+        $filename = "Laporan_Eksekutif_{$startDate}_sd_{$endDate}.csv";
 
-        // Expiring soon (within 30 days)
-        $expiringSoon = StockBatch::join('products', 'stock_batches.product_id', '=', 'products.id')
-            ->select(
-                'products.name',
-                'stock_batches.batch_number',
-                'stock_batches.expiry_date',
-                'stock_batches.current_stock'
-            )
-            ->where('expiry_date', '<=', Carbon::now()->addDays(30))
-            ->where('expiry_date', '>=', Carbon::now())
-            ->where('current_stock', '>', 0)
-            ->orderBy('expiry_date', 'asc')
-            ->get();
+        $callback = function() use ($summary, $criticalProducts, $expiringBatches, $startDate, $endDate) {
+            $file = fopen('php://output', 'w');
+            
+            // Header Laporan
+            fputcsv($file, ['LAPORAN EKSEKUTIF SIMASDARSA']);
+            fputcsv($file, ["Periode: $startDate s/d $endDate"]);
+            fputcsv($file, []);
 
-        // Stock turnover rate
-        $stockTurnover = Sale::join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
-            ->join('products', 'sale_details.product_id', '=', 'products.id')
-            ->select(
-                'products.name',
-                DB::raw('SUM(sale_details.quantity) as sold_quantity'),
-                DB::raw('AVG(products.price) as avg_price')
-            )
-            ->where('sales.created_at', '>=', Carbon::now()->subMonths(3))
-            ->groupBy('products.id', 'products.name')
-            ->orderBy('sold_quantity', 'desc')
-            ->get();
+            // Bagian 1: Ringkasan Finansial
+            fputcsv($file, ['RINGKASAN FINANSIAL']);
+            fputcsv($file, ['Total Transaksi', 'Total Pendapatan', 'Total Laba Kotor']);
+            fputcsv($file, [
+                $summary->total_transactions ?? 0,
+                $summary->total_revenue ?? 0,
+                $summary->total_profit ?? 0
+            ]);
+            fputcsv($file, []);
 
-        return view('pimpinan.critical-stock-stats', compact(
-            'criticalStock',
-            'expiringSoon',
-            'stockTurnover'
-        ));
+            // Bagian 2: Stok Kritis
+            fputcsv($file, ['DAFTAR STOK KRITIS (DI BAWAH MINIMUM)']);
+            fputcsv($file, ['ID', 'Nama Produk', 'Kategori', 'Stok Minimal', 'Stok Saat Ini', 'Satuan', 'Status']);
+            
+            foreach ($criticalProducts as $product) {
+                fputcsv($file, [
+                    $product->id,
+                    $product->name,
+                    $product->category,
+                    $product->min_stock,
+                    $product->total_stock,
+                    $product->unit,
+                    $product->total_stock <= 0 ? 'HABIS' : 'KRITIS'
+                ]);
+            }
+
+            fputcsv($file, []);
+
+            // Bagian 3: Kedaluwarsa
+            fputcsv($file, ['DAFTAR BATCH SEGERA KEDALUWARSA (30 HARI)']);
+            fputcsv($file, ['Nama Produk', 'Kode Batch', 'Tgl Kedaluwarsa', 'Sisa Hari', 'Stok Sisa']);
+            foreach ($expiringBatches as $batch) {
+                fputcsv($file, [
+                    $batch->product->name,
+                    $batch->batch_code ?: '-',
+                    $batch->expired_date->format('d/m/Y'),
+                    $batch->days_until_expired,
+                    $batch->current_quantity
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return new StreamedResponse($callback, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ]);
     }
 }

@@ -34,7 +34,7 @@
             <div>
                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pendapatan Hari Ini</p>
                 <p class="text-2xl font-bold text-gray-800 mt-1">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</p>
-                <p class="text-xs text-green-500 mt-1 font-medium">Laba: Rp {{ number_format($todayProfit, 0, ',', '.') }}</p>
+                <p class="text-xs text-green-500 mt-1 font-medium">{{-- Laba: Rp {{ number_format($todayProfit, 0, ',', '.') }} --}}</p>
             </div>
             <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
                 <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

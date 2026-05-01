@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
+use Illuminate\Support\Facades\Log;
+
 class LoginController extends Controller
 {
     public function showLoginForm()
@@ -50,11 +52,20 @@ class LoginController extends Controller
         // Store selected role in session for RBAC
         session(['selected_role' => $request->sub_role]);
 
+        // Audit Log
+        Log::info("AUDIT_LOG: USER LOGIN - User: {$user->name} ({$user->email}), Role: {$request->sub_role}, IP: {$request->ip()}");
+
         return redirect()->route('dashboard');
     }
 
     public function logout(Request $request)
     {
+        $user = Auth::user();
+        $email = $user ? $user->email : 'unknown';
+        $name = $user ? $user->name : 'unknown';
+        
+        Log::info("AUDIT_LOG: USER LOGOUT - User: {$name} ({$email}), IP: {$request->ip()}");
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
