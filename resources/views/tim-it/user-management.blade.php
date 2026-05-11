@@ -11,6 +11,19 @@
     openEditModal(user) {
         this.currentUser = { ...user };
         this.showEditModal = true;
+    },
+    updatePermission(userId, permission, value) {
+        fetch('{{ url('tim-it/user-management') }}/' + userId + '/permissions', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                permission: permission,
+                value: value
+            })
+        });
     }
 }" class="space-y-6">
 
@@ -34,6 +47,7 @@
                     <th class="px-6 py-4">User</th>
                     <th class="px-6 py-4">Email</th>
                     <th class="px-6 py-4">Roles</th>
+                    <th class="px-6 py-4">Akses CRUD</th>
                     <th class="px-6 py-4 text-center">Aksi</th>
                 </tr>
             </thead>
@@ -59,7 +73,26 @@
                         </div>
                     </td>
                     <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            @foreach(['create', 'read', 'update', 'delete'] as $perm)
+                            <label class="flex flex-col items-center gap-1 group/toggle cursor-pointer">
+                                <span class="text-[7px] font-black uppercase text-gray-400 group-hover/toggle:text-brand-500 transition-colors">{{ $perm }}</span>
+                                <div class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" 
+                                           @change="updatePermission({{ $user->id }}, 'crud.{{ $perm }}', $event.target.checked)"
+                                           {{ $user->hasPermission("crud.$perm") ? 'checked' : '' }}
+                                           class="sr-only peer">
+                                    <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-600"></div>
+                                </div>
+                            </label>
+                            @endforeach
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
                         <div class="flex justify-center gap-2">
+                            <a href="{{ route('tim-it.user-management.details', $user->id) }}" class="p-2 text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="Pengaturan Menu">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </a>
                             <button @click="openEditModal({{ json_encode($user) }})" class="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </button>

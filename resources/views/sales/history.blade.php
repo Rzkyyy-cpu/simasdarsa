@@ -12,7 +12,7 @@
           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3 items-end">
         <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">Dari Tanggal</label>
-            <input type="date" name="dari" value="{{ request('dari', now()->startOfMonth()->toDateString()) }}"
+            <input type="date" name="dari" value="{{ request('dari', now()->subDays(90)->toDateString()) }}"
                    class="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
         <div>

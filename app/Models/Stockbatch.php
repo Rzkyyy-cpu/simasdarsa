@@ -22,6 +22,8 @@ class StockBatch extends Model
         'current_quantity',
         'expired_date',
         'received_date',
+        'is_verified',
+        'location',
     ];
 
     protected $casts = [

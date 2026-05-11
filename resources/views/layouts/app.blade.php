@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" href="{{ asset('favicon.png') }}?v=2">
+
     <title>@yield('title', 'Dashboard') - SIMASDARSA</title>
 
     {{-- Tailwind CSS & Alpine.js --}}
@@ -55,6 +57,7 @@
         }
     </script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         [x-cloak] { display: none !important; }
@@ -85,88 +88,149 @@
         </div>
 
         <nav class="flex-1 overflow-y-auto p-3 space-y-1">
+            @php $user = Auth::user(); $isAdmin = in_array(session('selected_role'), ['tim_it']); @endphp
+
             {{-- Dashboard --}}
-            <a href="{{ route('dashboard') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 {{ request()->routeIs('dashboard') ? 'active' : 'text-brand-100 hover:bg-white/10 hover:text-white' }}">
+            @php $hasDashboard = $user->hasPermission('menus.dashboard') || $isAdmin; @endphp
+            <a href="{{ $hasDashboard ? route('dashboard') : '#' }}" 
+               @if(!$hasDashboard) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 {{ request()->routeIs('dashboard') ? 'active' : 'text-brand-100 hover:bg-white/10 hover:text-white' }} {{ !$hasDashboard ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                <span x-show="sidebarOpen">Dashboard</span>
+                <span x-show="sidebarOpen" class="flex-1">Dashboard</span>
+                @if(!$hasDashboard) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Inventori</p>
 
-            {{-- Produk (Manager, Tim IT, Pimpinan) --}}
-            @php $canProduk = in_array(session('selected_role'), ['manager', 'tim_it', 'pimpinan']); @endphp
-            <a href="{{ route('produk.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('produk.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canProduk ? 'restricted' : '' }}">
+            {{-- Produk --}}
+            @php $hasProduk = $user->hasPermission('menus.produk.index') || $isAdmin; @endphp
+            <a href="{{ $hasProduk ? route('produk.index') : '#' }}" 
+               @if(!$hasProduk) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('produk.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasProduk ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Manajemen Produk</span>
-                @if(!$canProduk) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasProduk) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            {{-- Stok (Manager, Kasir, Pimpinan) --}}
-            @php $canStok = in_array(session('selected_role'), ['manager', 'kasir', 'pimpinan']); @endphp
-            <a href="{{ route('stok.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('stok.index') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canStok ? 'restricted' : '' }}">
+            {{-- Stok --}}
+            @php $hasStok = $user->hasPermission('menus.stok.index') || $isAdmin; @endphp
+            <a href="{{ $hasStok ? route('stok.index') : '#' }}" 
+               @if(!$hasStok) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('stok.index') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasStok ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Batch Stok</span>
-                @if(!$canStok) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasStok) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            {{-- Monitoring Kedaluarsa (Manager, Kasir, Pimpinan) --}}
-            @php $canExpiry = in_array(session('selected_role'), ['manager', 'kasir', 'pimpinan']); @endphp
-            <a href="{{ route('stok.expiry-monitor') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('stok.expiry-monitor') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canExpiry ? 'restricted' : '' }}">
+            {{-- Verifikasi Stok Masuk --}}
+            @php $hasVerify = $user->hasPermission('menus.manager.verify-incoming-stock') || $isAdmin; @endphp
+            <a href="{{ $hasVerify ? route('manager.verify-incoming-stock') : '#' }}" 
+               @if(!$hasVerify) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('manager.verify-incoming-stock') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasVerify ? 'restricted' : '' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Verifikasi Stok</span>
+                @if(!$hasVerify) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+            </a>
+
+            {{-- Lokasi Barang --}}
+            @php 
+                $hasLocation = $user->hasPermission('menus.manager.item-status-location') || $isAdmin;
+                $locationRoute = match(session('selected_role')) {
+                    'kasir'   => 'kasir.item-status-location',
+                    default   => 'manager.item-status-location'
+                };
+            @endphp
+            <a href="{{ $hasLocation ? route($locationRoute) : '#' }}" 
+               @if(!$hasLocation) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ (request()->routeIs('manager.item-status-location') || request()->routeIs('kasir.item-status-location')) ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasLocation ? 'restricted' : '' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Lokasi Barang</span>
+                @if(!$hasLocation) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+            </a>
+
+            {{-- Monitoring Kedaluarsa --}}
+            @php $hasExpiry = $user->hasPermission('menus.stok.expiry-monitor') || $isAdmin; @endphp
+            <a href="{{ $hasExpiry ? route('stok.expiry-monitor') : '#' }}" 
+               @if(!$hasExpiry) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('stok.expiry-monitor') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasExpiry ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Monitoring Kedaluarsa</span>
-                @if(!$canExpiry) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasExpiry) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Transaksi</p>
 
-            {{-- Kasir (Kasir, Pimpinan) --}}
-            @php $canPOS = in_array(session('selected_role'), ['kasir', 'pimpinan']); @endphp
-            <a href="{{ route('kasir.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('kasir.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canPOS ? 'restricted' : '' }}">
+            {{-- Kasir (POS) --}}
+            @php $hasPOS = $user->hasPermission('menus.kasir.index') || $isAdmin; @endphp
+            <a href="{{ $hasPOS ? route('kasir.index') : '#' }}" 
+               @if(!$hasPOS) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('kasir.index') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasPOS ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Kasir (POS)</span>
-                @if(!$canPOS) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasPOS) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            {{-- Riwayat Penjualan (Manager, Kasir, Pimpinan) --}}
-            @php $canHistory = in_array(session('selected_role'), ['manager', 'kasir', 'pimpinan']); @endphp
-            <a href="{{ route('penjualan.index') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('penjualan.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canHistory ? 'restricted' : '' }}">
+            {{-- Update Stok Fisik --}}
+            @php $hasUpdateStok = $user->hasPermission('menus.kasir.update-physical-stock') || $isAdmin; @endphp
+            <a href="{{ $hasUpdateStok ? route('kasir.update-physical-stock') : '#' }}" 
+               @if(!$hasUpdateStok) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('kasir.update-physical-stock') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasUpdateStok ? 'restricted' : '' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                <span x-show="sidebarOpen" class="flex-1">Update Stok Fisik</span>
+                @if(!$hasUpdateStok) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+            </a>
+
+            {{-- Riwayat Penjualan --}}
+            @php $hasHistory = $user->hasPermission('menus.penjualan.index') || $isAdmin; @endphp
+            <a href="{{ $hasHistory ? route('penjualan.index') : '#' }}" 
+               @if(!$hasHistory) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('penjualan.*') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasHistory ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Riwayat Penjualan</span>
-                @if(!$canHistory) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasHistory) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            {{-- Laporan (Pimpinan, Manager) --}}
-            @php $canLaporan = in_array(session('selected_role'), ['pimpinan', 'manager']); @endphp
+            {{-- Laporan --}}
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Analitik</p>
             
-            <a href="{{ route('laporan.eksekutif') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.eksekutif') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canLaporan ? 'restricted' : '' }}">
+            @php $hasEksekutif = $user->hasPermission('menus.laporan.eksekutif') || $isAdmin; @endphp
+            <a href="{{ $hasEksekutif ? route('laporan.eksekutif') : '#' }}" 
+               @if(!$hasEksekutif) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.eksekutif') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasEksekutif ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Laporan Eksekutif</span>
-                @if(!$canLaporan) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasEksekutif) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            <a href="{{ route('laporan.laba-rugi') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.laba-rugi') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$canLaporan ? 'restricted' : '' }}">
+            @php $hasLabaRugi = $user->hasPermission('menus.laporan.laba-rugi') || $isAdmin; @endphp
+            <a href="{{ $hasLabaRugi ? route('laporan.laba-rugi') : '#' }}" 
+               @if(!$hasLabaRugi) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('laporan.laba-rugi') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasLabaRugi ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Laba Rugi</span>
-                @if(!$canLaporan) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
+                @if(!$hasLabaRugi) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            {{-- Tim IT (Tim IT, Pimpinan) --}}
-            @php $canIT = in_array(session('selected_role'), ['tim_it', 'pimpinan']); @endphp
-            @if($canIT)
+            {{-- Administrasi Sistem --}}
             <p x-show="sidebarOpen" class="px-3 pt-3 pb-1 text-[10px] font-bold text-brand-300 uppercase tracking-widest">Administrasi Sistem</p>
             
-            <a href="{{ route('tim-it.user-management') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('tim-it.user-management') ? 'active' : 'text-brand-100 hover:bg-white/10' }}">
+            @php $hasUserMgmt = $user->hasPermission('menus.tim-it.user-management') || $isAdmin; @endphp
+            <a href="{{ $hasUserMgmt ? route('tim-it.user-management') : '#' }}" 
+               @if(!$hasUserMgmt) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('tim-it.user-management') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasUserMgmt ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">User Management</span>
+                @if(!$hasUserMgmt) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
 
-            <a href="{{ route('tim-it.audit-logs') }}" class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('tim-it.audit-logs') ? 'active' : 'text-brand-100 hover:bg-white/10' }}">
+            @php $hasAudit = $user->hasPermission('menus.tim-it.audit-logs') || $isAdmin; @endphp
+            <a href="{{ $hasAudit ? route('tim-it.audit-logs') : '#' }}" 
+               @if(!$hasAudit) onclick="window.notif.error('Menu ini telah dikunci oleh Tim IT', 'Akses Terkunci')" @endif
+               class="sidebar-link flex items-center rounded-lg text-sm font-medium p-2.5 transition-all {{ request()->routeIs('tim-it.audit-logs') ? 'active' : 'text-brand-100 hover:bg-white/10' }} {{ !$hasAudit ? 'restricted' : '' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 <span x-show="sidebarOpen" class="flex-1">Audit Log Activity</span>
+                @if(!$hasAudit) <svg x-show="sidebarOpen" class="w-3 h-3 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg> @endif
             </a>
-            @endif
-        </nav>
 
         {{-- Logout Sidebar --}}
         <div class="border-t border-brand-600 p-4">

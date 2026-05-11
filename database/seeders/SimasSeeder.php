@@ -80,7 +80,9 @@ class SimasSeeder extends Seeder
         $bar = $this->command->getOutput()->createProgressBar(count($allProducts));
 
         $products = [];
-        foreach ($allProducts as $data) {
+        $expiredCount = 0; // Counter for expired products
+
+        foreach ($allProducts as $index => $data) {
             $product = Product::create([
                 'barcode'   => $data['barcode'],
                 'name'      => $data['name'],
@@ -89,32 +91,40 @@ class SimasSeeder extends Seeder
                 'unit'      => $data['unit'],
             ]);
 
-            // Setiap produk punya 2–4 batch stok dengan tanggal expired berbeda
+            // Setiap produk punya 2–4 batch stok
             $numBatches = rand(2, 4);
+            $currentTotal = 0;
+
             for ($b = 0; $b < $numBatches; $b++) {
+                // Default: Tanggal expired jauh di masa depan (Tahun 2027 - 2028), minimal bulan Agustus
+                $expiredDate = Carbon::create(2027, rand(8, 12), rand(1, 28))->addYears(rand(0, 1))->toDateString();
 
-                // Variasikan tanggal expired:
-                // - Batch pertama: mungkin sudah hampir expired atau bahkan expired
-                // - Batch berikutnya: lebih lama
-                $expiredDays = match ($b) {
-                    0       => rand(-10, 45),   // Batch lama: mungkin sudah atau akan expired
-                    1       => rand(30, 120),   // Batch menengah
-                    default => rand(90, 365),   // Batch baru: masih lama
-                };
+                // Jadikan 3 produk pertama kadaluarsa
+                if ($expiredCount < 3 && $b == 0) {
+                    $expiredDate = now()->subDays(rand(1, 60))->toDateString();
+                }
 
-                $buyPrice  = $data['buy_price'] * (1 + (rand(-5, 5) / 100)); // ±5% variasi
+                $buyPrice  = $data['buy_price'] * (1 + (rand(-5, 5) / 100));
                 $sellPrice = $data['sell_price'] * (1 + (rand(-3, 3) / 100));
+
+                // Pastikan stok melimpah
+                $qty = rand($product->min_stock, $product->min_stock * 3);
+                $currentTotal += $qty;
 
                 StockBatch::create([
                     'product_id'       => $product->id,
                     'batch_code'       => 'BTH-' . strtoupper(substr(md5($product->id . $b), 0, 6)),
-                    'buy_price'        => round($buyPrice, -1),  // Bulatkan ke 10
+                    'buy_price'        => round($buyPrice, -1),
                     'sell_price'       => round($sellPrice, -1),
-                    'initial_quantity' => $qty = rand(10, 200),
-                    'current_quantity' => rand((int)($qty * 0.3), $qty), // Sudah terjual sebagian
-                    'expired_date'     => now()->addDays($expiredDays)->toDateString(),
+                    'initial_quantity' => $qty + rand(100, 200),
+                    'current_quantity' => $qty,
+                    'expired_date'     => $expiredDate,
                     'received_date'    => now()->subDays(rand(1, 90))->toDateString(),
                 ]);
+            }
+
+            if ($expiredCount < 3) {
+                $expiredCount++;
             }
 
             $products[] = $product;
@@ -258,7 +268,7 @@ class SimasSeeder extends Seeder
             ['Kuku Bima Ener-G Sachet', 1500, 2500, 'sachet'], ['Extra Joss Sachet', 1500, 2500, 'sachet'],
             ['Hemaviton Jreng Sachet', 2000, 3500, 'sachet'], ['M-150 Energy Drink 150ml', 5000, 7500, 'botol'],
         ];
-        return $this->formatProduk($produk, [5, 15], 'botol');
+        return $this->formatProduk($produk, [50, 150], 'botol');
     }
 
     private function getMakananRingan(): array
@@ -290,7 +300,7 @@ class SimasSeeder extends Seeder
             ['Sosis So Nice 500g', 22000, 32000, 'pcs'], ['Bakso Ikan 500g', 20000, 30000, 'pcs'],
             ['Abon Sapi 100g', 20000, 30000, 'pcs'], ['Keripik Tempe 100g', 10000, 16000, 'pcs'],
         ];
-        return $this->formatProduk($produk, [10, 20], 'pcs');
+        return $this->formatProduk($produk, [100, 200], 'pcs');
     }
 
     private function getMieBubur(): array
@@ -307,7 +317,7 @@ class SimasSeeder extends Seeder
             ['Oatmeal Quaker 40g sachet', 6000, 9000, 'sachet'], ['Promina Bubur 120g', 8000, 12000, 'pcs'],
             ['Milna Biscuit Bayi 130g', 15000, 22000, 'pcs'], ['Cerelac Beras 200g', 25000, 36000, 'pcs'],
         ];
-        return $this->formatProduk($produk, [20, 50], 'pcs');
+        return $this->formatProduk($produk, [200, 500], 'pcs');
     }
 
     private function getBumbuRempah(): array
@@ -324,7 +334,7 @@ class SimasSeeder extends Seeder
             ['Bumbu Nasi Goreng Bamboe', 4000, 6500, 'sachet'], ['Bumbu Rendang Bamboe', 5000, 8000, 'sachet'],
             ['Bumbu Opor Bamboe', 5000, 8000, 'sachet'], ['Cabe Bubuk 50g', 5000, 8000, 'pcs'],
         ];
-        return $this->formatProduk($produk, [5, 10], 'pcs');
+        return $this->formatProduk($produk, [50, 100], 'pcs');
     }
 
     private function getSusuDairy(): array
@@ -336,7 +346,7 @@ class SimasSeeder extends Seeder
             ['Milo Activ-Go 200g', 18000, 26000, 'pcs'], ['Ovomaltine Coklat 400g', 45000, 65000, 'pcs'],
             ['Nesquik Coklat 200g', 18000, 26000, 'pcs'], ['SGM Eksplor 1+ 400g', 55000, 80000, 'pcs'],
         ];
-        return $this->formatProduk($produk, [5, 10], 'kaleng');
+        return $this->formatProduk($produk, [50, 100], 'kaleng');
     }
 
     private function getRokok(): array
@@ -348,7 +358,7 @@ class SimasSeeder extends Seeder
             ['LA Bold 16s', 27000, 33000, 'bungkus'], ['Marlboro Red 20s', 35000, 43000, 'bungkus'],
             ['Camel Filter 20s', 30000, 38000, 'bungkus'], ['Class Mild 16s', 22000, 28000, 'bungkus'],
         ];
-        return $this->formatProduk($produk, [10, 30], 'bungkus');
+        return $this->formatProduk($produk, [100, 300], 'bungkus');
     }
 
     private function getAlatTulis(): array
@@ -365,7 +375,7 @@ class SimasSeeder extends Seeder
             ['Spidol Whiteboard Snowman', 5000, 8000, 'pcs'], ['Cutter Besar Kenko', 7000, 11000, 'pcs'],
             ['Tipe-X Koreksi Pilot', 4000, 6500, 'pcs'], ['Penggaris 30cm Joyko', 3000, 5000, 'pcs'],
         ];
-        return $this->formatProduk($produk, [10, 30], 'pcs');
+        return $this->formatProduk($produk, [100, 300], 'pcs');
     }
 
     private function getSabunKebersihan(): array
@@ -382,7 +392,7 @@ class SimasSeeder extends Seeder
             ['Tisu Paseo Pocket 4 Ply', 3000, 5000, 'pcs'], ['Tisu Basah Mitu 10 lembar', 3500, 6000, 'pcs'],
             ['Deodoran Rexona Roll-On 25ml', 12000, 18000, 'pcs'], ['Cologne Axe 50ml', 20000, 30000, 'botol'],
         ];
-        return $this->formatProduk($produk, [10, 20], 'pcs');
+        return $this->formatProduk($produk, [100, 200], 'pcs');
     }
 
     private function getKecantikan(): array
@@ -394,7 +404,7 @@ class SimasSeeder extends Seeder
             ['Micellar Water Garnier 125ml', 25000, 37000, 'botol'], ['Pembersih Wajah Facial Foam Ovale', 18000, 28000, 'pcs'],
             ['Minyak Telon Lang 60ml', 15000, 23000, 'botol'], ['Revlon Lip Butter 3.7g', 35000, 53000, 'pcs'],
         ];
-        return $this->formatProduk($produk, [5, 15], 'pcs');
+        return $this->formatProduk($produk, [50, 150], 'pcs');
     }
 
     private function getFrozenFood(): array
@@ -407,7 +417,7 @@ class SimasSeeder extends Seeder
             ['Dimsum Udang HAP 300g', 25000, 37000, 'pcs'], ['Spring Roll Isian Sayur 500g', 25000, 37000, 'pcs'],
         ];
         // Frozen food: masa expired lebih pendek
-        return $this->formatProduk($produk, [10, 30], 'pcs');
+        return $this->formatProduk($produk, [100, 300], 'pcs');
     }
 
     /**

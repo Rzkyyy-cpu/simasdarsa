@@ -22,8 +22,10 @@ class RoleMiddleware
             return redirect()->route('login');
         }
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $selectedRole = session('selected_role');
+    
 
         // Jika tidak ada role yang dipilih di session, paksa login ulang
         if (!$selectedRole) {
@@ -37,7 +39,7 @@ class RoleMiddleware
         }
 
         // Cek apakah role yang sedang diakses ada dalam daftar role yang diizinkan untuk rute ini
-        if (!in_array($selectedRole, $roles) || !$user->hasRole($selectedRole)) {
+        if (!in_array($selectedRole, $roles) || !method_exists($user, 'hasRole') || !$user->hasRole($selectedRole)) {
             $allowedRoles = implode(', ', $roles);
             return redirect()->route('dashboard')->with('error', "Akses Ditolak: Peran '" . strtoupper($selectedRole) . "' tidak diizinkan mengakses halaman ini. Halaman ini khusus untuk: " . strtoupper($allowedRoles));
         }

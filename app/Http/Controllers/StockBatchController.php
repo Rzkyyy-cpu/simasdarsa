@@ -135,4 +135,79 @@ class StockBatchController extends Controller
             'expiredCount', 'criticalCount', 'warningCount', 'safeCount'
         ));
     }
+
+    /**
+     * Verifikasi stok masuk - Manager
+     */
+    public function verifyIncomingStock()
+    {
+        $batches = StockBatch::with('product')
+            ->where('is_verified', false)
+            ->orderBy('received_date', 'desc')
+            ->get();
+
+        return view('stock.verify', compact('batches'));
+    }
+
+    /**
+     * Proses verifikasi batch - Manager
+     */
+    public function verifyBatch(StockBatch $batch)
+    {
+        $batch->update(['is_verified' => true]);
+        return back()->with('success', "Batch {$batch->batch_code} berhasil diverifikasi.");
+    }
+
+    /**
+     * Cek status dan lokasi barang - Manager & Kasir
+     */
+    public function itemStatusLocation(Request $request)
+    {
+        $query = StockBatch::with('product')
+            ->where('current_quantity', '>', 0);
+
+        if ($request->filled('q')) {
+            $query->whereHas('product', function($q) use ($request) {
+                $q->where('name', 'like', "%{$request->q}%");
+            })->orWhere('batch_code', 'like', "%{$request->q}%")
+              ->orWhere('location', 'like', "%{$request->q}%");
+        }
+
+        $batches = $query->paginate(20);
+
+        return view('stock.location', compact('batches'));
+    }
+
+    /**
+     * Update stok fisik - Kasir
+     */
+    public function updatePhysicalStock()
+    {
+        $batches = StockBatch::whereHas('product')
+            ->with('product')
+            ->where('current_quantity', '>', 0)
+            ->get();
+
+        return view('stock.physical_update', compact('batches'));
+    }
+
+    /**
+     * Simpan update stok fisik - Kasir
+     */
+    public function savePhysicalStockUpdate(Request $request)
+    {
+        $request->validate([
+            'batch_id' => 'required|exists:stock_batches,id',
+            'actual_quantity' => 'required|integer|min:0',
+            'notes' => 'nullable|string',
+        ]);
+
+        $batch = StockBatch::findOrFail($request->batch_id);
+        $oldQuantity = $batch->current_quantity;
+        $batch->update(['current_quantity' => $request->actual_quantity]);
+
+        \Illuminate\Support\Facades\Log::info("AUDIT_LOG: PHYSICAL STOCK UPDATE - Batch: {$batch->batch_code}, Old: {$oldQuantity}, New: {$request->actual_quantity}, User: " . auth()->user()->name);
+
+        return back()->with('success', 'Stok fisik berhasil diperbarui.');
+    }
 }

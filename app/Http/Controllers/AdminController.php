@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
 {
@@ -37,6 +38,15 @@ class AdminController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'roles' => $request->roles,
+            'permissions' => [
+                'crud' => [
+                    'create' => false,
+                    'read' => true,
+                    'update' => false,
+                    'delete' => false
+                ],
+                'menus' => ['dashboard']
+            ]
         ]);
 
         return redirect()->back()->with('success', 'User berhasil ditambahkan.');
@@ -83,6 +93,90 @@ class AdminController extends Controller
         $user->delete();
 
         return redirect()->back()->with('success', 'User berhasil dihapus.');
+    }
+
+    /**
+     * Update user permissions (CRUD toggles)
+     */
+    public function updatePermissions(Request $request, User $user)
+    {
+        $request->validate([
+            'permission' => 'required|string',
+            'value' => 'required|boolean',
+        ]);
+
+        $permissions = $user->permissions ?? [];
+        
+        // Ensure crud structure exists
+        if (!isset($permissions['crud'])) {
+            $permissions['crud'] = [
+                'create' => false,
+                'read' => true,
+                'update' => false,
+                'delete' => false
+            ];
+        }
+
+        if (str_starts_with($request->permission, 'crud.')) {
+            $key = str_replace('crud.', '', $request->permission);
+            $permissions['crud'][$key] = (bool) $request->value;
+        }
+
+        $user->update(['permissions' => $permissions]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * User Detailed Permissions Page
+     */
+    public function userDetails(User $user)
+    {
+        // Define all menus in the system
+        $menus = [
+            'Dashboard' => 'dashboard',
+            'Manajemen Produk' => 'produk.index',
+            'Manajemen Stok (Batch)' => 'stok.index',
+            'Verifikasi Stok Masuk' => 'manager.verify-incoming-stock',
+            'Monitoring Kedaluarsa' => 'stok.expiry-monitor',
+            'Lokasi Barang' => 'manager.item-status-location',
+            'POS (Kasir)' => 'kasir.index',
+            'Update Stok Fisik (Opname)' => 'kasir.update-physical-stock',
+            'Riwayat Penjualan' => 'penjualan.index',
+            'Laporan Laba Rugi' => 'laporan.laba-rugi',
+            'Laporan Eksekutif' => 'laporan.eksekutif',
+            'User Management' => 'tim-it.user-management',
+            'Audit Logs' => 'tim-it.audit-logs',
+            'Pengaturan Harga' => 'pimpinan.price-settings',
+            'Pengaturan Diskon' => 'pimpinan.discount-settings',
+        ];
+
+        return view('tim-it.user-details', compact('user', 'menus'));
+    }
+
+    /**
+     * Update detailed user permissions (Menu access)
+     */
+    public function updateUserDetails(Request $request, User $user)
+    {
+        $permissions = $user->permissions ?? [];
+        
+        // Keep existing CRUD permissions
+        $crud = $permissions['crud'] ?? [
+            'create' => false,
+            'read' => true,
+            'update' => false,
+            'delete' => false
+        ];
+
+        $user->update([
+            'permissions' => [
+                'crud' => $crud,
+                'menus' => $request->menus ?? []
+            ]
+        ]);
+
+        return redirect()->route('tim-it.user-management')->with('success', 'Hak akses menu berhasil diperbarui.');
     }
 
     /**
@@ -181,6 +275,55 @@ class AdminController extends Controller
         }
 
         return view('tim-it.audit-logs', compact('logs'));
+    }
+
+    /**
+     * Export Audit Logs to CSV
+     */
+    public function exportAuditLogs()
+    {
+        $logPath = storage_path('logs/laravel.log');
+        $logs = [];
+
+        if (file_exists($logPath)) {
+            $logContent = file_get_contents($logPath);
+            $logLines = explode("\n", $logContent);
+            
+            foreach ($logLines as $line) {
+                if (empty(trim($line)) || !str_contains($line, 'AUDIT_LOG:')) continue;
+                
+                preg_match('/\[(.*?)\] (.*?)\.(.*?): (.*)/', $line, $matches);
+                if (count($matches) >= 5) {
+                    $logs[] = [
+                        'timestamp' => $matches[1],
+                        'level'     => $matches[3],
+                        'message'   => str_replace('AUDIT_LOG: ', '', $matches[4]),
+                    ];
+                }
+            }
+        }
+
+        $filename = "Audit_Logs_" . now()->format('Ymd_His') . ".csv";
+
+        $callback = function() use ($logs) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Waktu', 'Level', 'Aktivitas/Pesan']);
+
+            foreach (array_reverse($logs) as $log) {
+                fputcsv($file, [
+                    $log['timestamp'],
+                    $log['level'],
+                    $log['message']
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return new StreamedResponse($callback, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ]);
     }
 
     /**

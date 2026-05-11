@@ -62,11 +62,9 @@ class Sale extends Model
         parent::boot();
 
         static::creating(function ($sale) {
-            $saleDate = $sale->sale_date
-                ? ($sale->sale_date instanceof Carbon ? $sale->sale_date : Carbon::parse($sale->sale_date))
-                : now();
+            $sale->sale_date = Carbon::parse($sale->sale_date ?: now());
 
-            $sale->sale_date = $sale->sale_date ? $saleDate : now();
+            $saleDate = $sale->sale_date; // Define $saleDate AFTER $sale->sale_date is set
 
             if (empty($sale->invoice_number)) {
                 $dateString = $saleDate->format('Ymd');

@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register Role-based Access Control middleware
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'permission' => \App\Http\Middleware\CheckPermissions::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
