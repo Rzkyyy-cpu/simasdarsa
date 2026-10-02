@@ -99,8 +99,25 @@ class SaleController extends Controller
             'notes'               => 'nullable|string|max:500',
         ]);
 
-        // Gunakan DB Transaction agar semua perubahan stok atomic
-        // (jika ada error di tengah jalan, semua rollback)
+        try {
+            return $this->runSaleTransaction($validated);
+        } catch (\RuntimeException $e) {
+            // Error bisnis (stok/pembayaran kurang) dikirim sebagai 422
+            // supaya pesannya tetap terbaca di halaman kasir.
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Jalankan transaksi penjualan.
+     * DB Transaction membuat semua perubahan stok atomic
+     * (jika ada error di tengah jalan, semua di-rollback).
+     */
+    private function runSaleTransaction(array $validated)
+    {
         return DB::transaction(function () use ($validated) {
 
             $saleDetailsData = [];
@@ -121,7 +138,7 @@ class SaleController extends Controller
 
                 // Tolak jika stok tidak cukup
                 if ($availableStock < $qtyNeeded) {
-                    throw new \Exception(
+                    throw new \RuntimeException(
                         "Stok {$product->name} tidak cukup. " .
                         "Dibutuhkan: {$qtyNeeded}, Tersedia: {$availableStock}"
                     );
@@ -142,7 +159,7 @@ class SaleController extends Controller
 
             // Validasi uang pembayaran cukup
             if ($validated['total_payment'] < $totalAmount) {
-                throw new \Exception(
+                throw new \RuntimeException(
                     "Pembayaran tidak cukup. " .
                     "Total: Rp " . number_format($totalAmount) .
                     ", Dibayar: Rp " . number_format($validated['total_payment'])
@@ -255,7 +272,7 @@ class SaleController extends Controller
 
         // Jika masih ada sisa (tidak seharusnya terjadi karena sudah divalidasi di atas)
         if ($remainingQty > 0) {
-            throw new \Exception(
+            throw new \RuntimeException(
                 "Gagal memotong stok {$product->name}. " .
                 "Kekurangan: {$remainingQty} {$product->unit}"
             );

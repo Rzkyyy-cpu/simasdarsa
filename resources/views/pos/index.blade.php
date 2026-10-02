@@ -5,7 +5,10 @@
 @section('page-subtitle', 'Input transaksi penjualan — stok dikurangi otomatis dengan metode FEFO')
 
 @section('content')
-<div class="grid grid-cols-1 xl:grid-cols-5 gap-6" x-data="posSystem()">
+{{-- Satu komponen Alpine membungkus halaman kasir DAN modal sukses,
+     supaya modal bisa membaca state transaksi (showSuccess, lastInvoice, dll). --}}
+<div x-data="posSystem()">
+<div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
 
     {{-- ============================================================ --}}
     {{-- KOLOM KIRI: Pencarian & Daftar Produk --}}
@@ -231,6 +234,7 @@
             Transaksi Baru
         </button>
     </div>
+</div>
 </div>
 @endsection
 
