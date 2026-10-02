@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\StockBatch;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
@@ -32,6 +33,15 @@ class SimasSeeder extends Seeder
         \App\Models\User::truncate();
         Schema::enableForeignKeyConstraints();
 
+        // Semua insert dibungkus satu transaksi: jauh lebih cepat,
+        // terutama di SQLite (dipakai saat demo online).
+        DB::transaction(fn () => $this->seedData());
+
+        $this->command->info('🚀 Aplikasi siap digunakan untuk testing!');
+    }
+
+    private function seedData(): void
+    {
         // -------------------------------------------------------
         // DATA PRODUK WARUNG/UMKM (500 produk)
         // -------------------------------------------------------
@@ -245,8 +255,6 @@ class SimasSeeder extends Seeder
         foreach ($users as $userData) {
             \App\Models\User::create($userData);
         }
-
-        $this->command->info('🚀 Aplikasi siap digunakan untuk testing!');
     }
 
     // =========================================================
