@@ -2,22 +2,40 @@
 
 Sistem informasi manajemen stok dan penjualan berbasis web untuk toko/warung UMKM. Dibangun dengan Laravel dan Tailwind CSS.
 
+Fokus utamanya adalah **stok dengan tanggal kedaluwarsa**: setiap barang masuk dicatat per batch, dan kasir otomatis mengeluarkan stok dari batch yang paling cepat expired (metode FEFO).
+
+![Dashboard](docs/screenshots/02-dashboard.png)
+
 ## Fitur
 
-- **Login & hak akses** berdasarkan role (Pimpinan, Tim IT, Manager, Kasir) dan permission per menu.
-- **Manajemen produk** lengkap dengan barcode, kategori, satuan, dan stok minimum.
-- **Batch stok** dengan tanggal masuk dan tanggal kedaluwarsa, verifikasi stok masuk, update stok fisik, serta status lokasi barang.
+- **Kasir (POS) dengan FEFO** (*First Expired, First Out*): stok dipotong dari batch yang expired-nya paling dekat, bisa lintas beberapa batch, dan batch yang sudah expired tidak ikut terjual.
+- **Aman untuk transaksi bersamaan**: proses penjualan dibungkus database transaction dan `lockForUpdate()`, jadi dua kasir yang menjual barang sama di waktu bersamaan tidak membuat stok minus.
+- **Batch stok** dengan tanggal masuk dan kedaluwarsa, verifikasi stok masuk, update stok fisik (opname), serta lokasi barang.
 - **Monitoring kedaluwarsa** dan notifikasi email otomatis setiap hari untuk stok yang akan expired dalam 30 hari.
-- **Kasir (POS)**: pencarian produk dan proses transaksi penjualan.
-- **Riwayat penjualan** dan detail transaksi.
-- **Laporan** laba-rugi dan laporan eksekutif.
-- **Panel Tim IT**: manajemen user, pengaturan permission, dan audit log (bisa diekspor).
+- **Laporan** laba-rugi per produk dan laporan eksekutif (bisa diekspor ke CSV).
+- **Role & permission per menu**: Pimpinan, Tim IT, Manager, dan Kasir. Tim IT bisa mengatur menu apa saja yang boleh dibuka tiap user.
+- **Audit log** aktivitas penting: login, logout, hapus produk, dan update stok fisik.
+
+## Tampilan
+
+| Kasir (POS) | Transaksi berhasil |
+|---|---|
+| ![Kasir](docs/screenshots/03-kasir.png) | ![Transaksi berhasil](docs/screenshots/04-transaksi-berhasil.png) |
+
+| Monitoring kedaluwarsa | Laporan laba-rugi |
+|---|---|
+| ![Monitoring kedaluwarsa](docs/screenshots/05-monitoring-expired.png) | ![Laporan laba-rugi](docs/screenshots/06-laporan-laba-rugi.png) |
+
+| Login | Laporan eksekutif |
+|---|---|
+| ![Login](docs/screenshots/01-login.png) | ![Laporan eksekutif](docs/screenshots/07-laporan-eksekutif.png) |
 
 ## Teknologi
 
 - PHP 8.3+ dan Laravel 13
-- MySQL / MariaDB
-- Vite dan Tailwind CSS 4
+- SQLite (default) atau MySQL/MariaDB
+- Tailwind CSS, Alpine.js, Chart.js
+- PHPUnit untuk pengujian
 
 ## Instalasi
 
@@ -28,11 +46,10 @@ Sistem informasi manajemen stok dan penjualan berbasis web untuk toko/warung UMK
    cd simasdarsa
    ```
 
-2. Install dependensi PHP dan JavaScript.
+2. Install dependensi PHP.
 
    ```bash
    composer install
-   npm install
    ```
 
 3. Salin file environment dan buat application key.
@@ -42,7 +59,13 @@ Sistem informasi manajemen stok dan penjualan berbasis web untuk toko/warung UMK
    php artisan key:generate
    ```
 
-4. Atur koneksi database di `.env`. Seeder data dummy memakai perintah khusus MySQL, jadi gunakan MySQL/MariaDB:
+4. Siapkan database. Paling cepat pakai SQLite (sudah jadi default di `.env.example`):
+
+   ```bash
+   touch database/database.sqlite
+   ```
+
+   Kalau mau pakai MySQL, ubah bagian ini di `.env`:
 
    ```env
    DB_CONNECTION=mysql
@@ -59,39 +82,46 @@ Sistem informasi manajemen stok dan penjualan berbasis web untuk toko/warung UMK
    php artisan migrate --seed
    ```
 
-6. Build aset frontend lalu jalankan server.
+6. Jalankan server, lalu buka `http://127.0.0.1:8000`.
 
    ```bash
-   npm run build
    php artisan serve
    ```
 
-   Buka `http://127.0.0.1:8000` di browser.
-
 ## Akun Demo
 
-Semua akun memakai password `password`.
+Semua akun memakai password `password`. Saat login, pilih peran yang sesuai dengan akunnya.
 
-| Role     | Email                    |
-|----------|--------------------------|
-| Pimpinan | pimpinan@simasdarsa.com  |
-| Tim IT   | tim_it@simasdarsa.com    |
-| Manager  | manager@simasdarsa.com   |
-| Kasir    | kasir@simasdarsa.com     |
+| Peran    | Email                   | Akses                                                     |
+|----------|-------------------------|-----------------------------------------------------------|
+| Pimpinan | pimpinan@simasdarsa.com | Semua menu                                                |
+| Tim IT   | tim_it@simasdarsa.com   | Semua menu, termasuk User Management dan Audit Log        |
+| Manager  | manager@simasdarsa.com  | Produk, batch stok, verifikasi, lokasi, expired, laporan laba-rugi |
+| Kasir    | kasir@simasdarsa.com    | Kasir, update stok fisik, monitoring expired, riwayat penjualan |
 
-Role Pimpinan dan Tim IT bisa membuka semua menu. Untuk Manager dan Kasir, atur dulu permission menunya lewat akun Tim IT di menu **User Management**.
+Akses Manager dan Kasir bisa diubah lewat akun Tim IT di menu **User Management**. Ganti password akun demo sebelum aplikasi dipakai sungguhan.
 
-Ganti password akun demo sebelum aplikasi dipakai sungguhan.
+## Menjalankan Test
+
+```bash
+php artisan test
+```
+
+Test memakai database SQLite di memori, jadi tidak mengganggu data lokal. Yang diuji antara lain:
+
+- **FEFO** (`tests/Feature/SaleFefoTest.php`): urutan pemotongan stok, pemotongan lintas batch, batch expired tidak terjual, serta penolakan saat stok atau pembayaran kurang tanpa mengubah stok.
+- **Hak akses** (`tests/Feature/AccessTest.php`): login, pembatasan menu sesuai permission, dan semua halaman utama bisa dibuka.
+- **Laporan** (`tests/Feature/ReportTest.php`): perhitungan pendapatan dan laba kotor.
 
 ## Notifikasi Kedaluwarsa
 
-Perintah berikut mengecek batch stok yang akan expired dalam 30 hari dan mengirim email ke user dengan role Pimpinan dan Manager:
+Perintah berikut mengecek batch stok yang akan expired dalam 30 hari dan mengirim email ke user dengan peran Pimpinan dan Manager:
 
 ```bash
 php artisan stock:check-expiry
 ```
 
-Perintah ini sudah dijadwalkan jalan setiap hari pukul 08:00. Supaya jadwal aktif, jalankan scheduler Laravel:
+Perintah ini dijadwalkan jalan setiap hari pukul 08:00. Supaya jadwal aktif, jalankan scheduler Laravel:
 
 ```bash
 php artisan schedule:work
