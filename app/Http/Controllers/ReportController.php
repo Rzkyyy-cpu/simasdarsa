@@ -21,7 +21,9 @@ class ReportController extends Controller
         $endDate = $request->get('end_date', now()->toDateString());
 
         // 1. Ringkasan Eksekutif (Finansial)
-        $summary = Sale::join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
+        // Pakai query builder (bukan model Sale) karena model Sale punya accessor
+        // total_profit yang akan menimpa hasil SUM di bawah menjadi 0.
+        $summary = DB::table('sales')->join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
             ->selectRaw('
                 COUNT(DISTINCT sales.id) as total_transactions,
                 SUM(sale_details.subtotal) as total_revenue,
@@ -31,17 +33,20 @@ class ReportController extends Controller
             ->first();
 
         // 2. Statistik Stok Kritis (Produk dengan total stok <= min_stock)
-        $criticalProducts = Product::select('products.*')
-            ->selectRaw('
-                COALESCE((
+        // Tanggal hari ini dikirim sebagai parameter (bukan CURDATE())
+        // supaya query jalan di MySQL maupun SQLite.
+        $activeStockSql = 'COALESCE((
                     SELECT SUM(sb.current_quantity)
                     FROM stock_batches sb
                     WHERE sb.product_id = products.id
                       AND sb.current_quantity > 0
-                      AND sb.expired_date >= CURDATE()
-                ), 0) as total_stock
-            ')
-            ->havingRaw('total_stock <= products.min_stock')
+                      AND sb.expired_date >= ?
+                ), 0)';
+        $today = now()->toDateString();
+
+        $criticalProducts = Product::select('products.*')
+            ->selectRaw("{$activeStockSql} as total_stock", [$today])
+            ->whereRaw("{$activeStockSql} <= products.min_stock", [$today])
             ->orderBy('total_stock', 'asc')
             ->get();
 

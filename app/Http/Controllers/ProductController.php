@@ -21,15 +21,15 @@ class ProductController extends Controller
                     FROM stock_batches sb
                     WHERE sb.product_id = products.id
                       AND sb.current_quantity > 0
-                      AND sb.expired_date >= CURDATE()
+                      AND sb.expired_date >= ?
                 ), 0) as total_stock
-            ')
+            ', [now()->toDateString()])
             ->selectRaw('
                 (SELECT COUNT(*) FROM stock_batches sb2
                  WHERE sb2.product_id = products.id
                    AND sb2.current_quantity > 0
-                   AND sb2.expired_date >= CURDATE()) as active_batches_count
-            ')
+                   AND sb2.expired_date >= ?) as active_batches_count
+            ', [now()->toDateString()])
             ->when($request->filled('q'), fn($q) =>
                 $q->where(function($inner) use ($request) {
                     $inner->where('products.name', 'like', "%{$request->q}%")
