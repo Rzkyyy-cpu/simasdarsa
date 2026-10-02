@@ -88,7 +88,8 @@
         </div>
 
         <nav class="flex-1 overflow-y-auto p-3 space-y-1">
-            @php $user = Auth::user(); $isAdmin = in_array(session('selected_role'), ['tim_it']); @endphp
+            @php $user = Auth::user(); // Samakan dengan middleware CheckPermissions: pimpinan & tim_it bisa akses semua menu
+                $isAdmin = $user->hasAnyRole(['tim_it', 'pimpinan']); @endphp
 
             {{-- Dashboard --}}
             @php $hasDashboard = $user->hasPermission('menus.dashboard') || $isAdmin; @endphp

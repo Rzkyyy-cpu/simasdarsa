@@ -49,7 +49,6 @@ Route::middleware('auth')->group(function () {
     Route::prefix('pimpinan')->name('pimpinan.')->group(function () {
         Route::get('/laporan-eksekutif', [ReportController::class, 'executiveReport'])->name('executive-report')->middleware('permission:menus.laporan.eksekutif');
         Route::get('/statistik-stok-kritis', [ReportController::class, 'executiveReport'])->name('critical-stock-stats')->middleware('permission:menus.laporan.eksekutif');
-        Route::get('/monitoring-expired-detail', [StockBatchController::class, 'expiryMonitorDetail'])->name('expiry-monitor-detail')->middleware('permission:menus.stok.expiry-monitor');
     });
 
     // -----------------------------------------------------------------------
@@ -73,8 +72,6 @@ Route::middleware('auth')->group(function () {
     // -----------------------------------------------------------------------
     Route::prefix('manager')->name('manager.')->group(function () {
         Route::get('/monitoring-expired', [StockBatchController::class, 'expiryMonitor'])->name('expiry-monitor')->middleware('permission:menus.stok.expiry-monitor');
-        Route::get('/monitoring-expired-detail', [StockBatchController::class, 'expiryMonitorDetail'])->name('expiry-monitor-detail')->middleware('permission:menus.stok.expiry-monitor');
-        Route::get('/produk-management', [ProductController::class, 'management'])->name('product-management')->middleware('permission:menus.produk.index');
         Route::get('/verifikasi-stok-masuk', [StockBatchController::class, 'verifyIncomingStock'])->name('verify-incoming-stock')->middleware('permission:menus.manager.verify-incoming-stock');
         Route::post('/verifikasi-stok-masuk/{batch}', [StockBatchController::class, 'verifyBatch'])->name('verify-batch')->middleware('permission:menus.manager.verify-incoming-stock');
         Route::get('/status-lokasi-barang', [StockBatchController::class, 'itemStatusLocation'])->name('item-status-location')->middleware('permission:menus.manager.item-status-location');
@@ -89,7 +86,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/riwayat-penjualan', [SaleController::class, 'history'])->name('sale-history')->middleware('permission:menus.penjualan.index'); 
         Route::get('/cari-produk', [SaleController::class, 'searchProduct'])->name('search-product')->middleware('permission:menus.kasir.index');
         Route::get('/monitoring-expired', [StockBatchController::class, 'expiryMonitor'])->name('expiry-monitor')->middleware('permission:menus.stok.expiry-monitor');
-        Route::get('/monitoring-expired-detail', [StockBatchController::class, 'expiryMonitorDetail'])->name('expiry-monitor-detail')->middleware('permission:menus.stok.expiry-monitor');
         Route::get('/update-stok-fisik', [StockBatchController::class, 'updatePhysicalStock'])->name('update-physical-stock')->middleware('permission:menus.kasir.update-physical-stock');
         Route::post('/update-stok-fisik', [StockBatchController::class, 'savePhysicalStockUpdate'])->name('save-physical-stock-update')->middleware('permission:menus.kasir.update-physical-stock');
         Route::get('/status-lokasi-barang', [StockBatchController::class, 'itemStatusLocation'])->name('item-status-location')->middleware('permission:menus.manager.item-status-location');
