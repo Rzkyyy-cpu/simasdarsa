@@ -23,3 +23,8 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Database lokal (jangan di-commit)
+/simasdarsa
+*.sqlite
+*.sqlite3
