@@ -1,0 +1,8 @@
+# Blueprint Render: deploy SIMASDARSA sebagai web service gratis memakai Dockerfile.
+services:
+  - type: web
+    name: simasdarsa
+    runtime: docker
+    plan: free
+    healthCheckPath: /up
+    autoDeployTrigger: commit

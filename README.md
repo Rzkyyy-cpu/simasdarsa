@@ -113,6 +113,19 @@ Test memakai database SQLite di memori, jadi tidak mengganggu data lokal. Yang d
 - **Hak akses** (`tests/Feature/AccessTest.php`): login, pembatasan menu sesuai permission, dan semua halaman utama bisa dibuka.
 - **Laporan** (`tests/Feature/ReportTest.php`): perhitungan pendapatan dan laba kotor.
 
+## Deploy Online (Render, gratis)
+
+Repo ini sudah berisi `Dockerfile` dan `render.yaml`, jadi bisa langsung di-deploy ke [Render](https://render.com) paket gratis:
+
+1. Login ke Render pakai akun GitHub.
+2. Pilih **New > Blueprint**, lalu pilih repo `simasdarsa`.
+3. Klik **Apply** dan tunggu build selesai (sekitar 5–10 menit untuk build pertama).
+
+Catatan versi demo:
+
+- Database memakai SQLite di dalam container dan **diisi ulang dengan data demo setiap kali server menyala**, jadi perubahan pengunjung tidak permanen.
+- Paket gratis Render akan tidur setelah 15 menit tanpa pengunjung. Akses pertama setelah tidur butuh sekitar 1–2 menit karena server menyala lagi dan mengisi ulang data demo.
+
 ## Notifikasi Kedaluwarsa
 
 Perintah berikut mengecek batch stok yang akan expired dalam 30 hari dan mengirim email ke user dengan peran Pimpinan dan Manager:
