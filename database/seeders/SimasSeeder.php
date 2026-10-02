@@ -7,7 +7,7 @@ use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\StockBatch;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 /**
@@ -22,21 +22,15 @@ class SimasSeeder extends Seeder
     {
         $this->command->info('🛒 SIMASDARSA - Memulai seeding data dummy...');
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // Kosongkan tabel. truncate() juga me-reset auto increment,
+        // dan cara ini jalan di MySQL maupun SQLite.
+        Schema::disableForeignKeyConstraints();
         SaleDetail::truncate();
         Sale::truncate();
         StockBatch::truncate();
         Product::truncate();
         \App\Models\User::truncate();
-
-        // Reset auto increment counters
-        DB::statement('ALTER TABLE products AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE stock_batches AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE sales AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE sale_details AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE users AUTO_INCREMENT = 1');
-
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
         // -------------------------------------------------------
         // DATA PRODUK WARUNG/UMKM (500 produk)
@@ -67,9 +61,14 @@ class SimasSeeder extends Seeder
         }
 
         // Pastikan tepat 500 produk dengan mengulang jika kurang
+        // Varian dibuat dari produk asli saja (bukan dari varian lain),
+        // supaya nama tidak jadi "X Varian 3 Varian 2".
+        $baseProducts = $allProducts;
+        $variantNo    = [];
         while (count($allProducts) < 500) {
-            $template    = $allProducts[array_rand($allProducts)];
-            $template['name'] .= ' Varian ' . rand(2, 9);
+            $template = $baseProducts[array_rand($baseProducts)];
+            $variantNo[$template['name']] = ($variantNo[$template['name']] ?? 1) + 1;
+            $template['name'] .= ' Varian ' . $variantNo[$template['name']];
             $template['barcode'] = (string) $barcode++;
             $allProducts[] = $template;
         }
@@ -219,12 +218,27 @@ class SimasSeeder extends Seeder
                 'email' => 'manager@simasdarsa.com',
                 'password' => bcrypt('password'),
                 'roles' => ['manager'],
+                'permissions' => [
+                    'crud'  => ['create' => true, 'read' => true, 'update' => true, 'delete' => false],
+                    'menus' => [
+                        'dashboard', 'produk.index', 'stok.index', 'manager.verify-incoming-stock',
+                        'stok.expiry-monitor', 'manager.item-status-location',
+                        'penjualan.index', 'laporan.laba-rugi',
+                    ],
+                ],
             ],
             [
                 'name' => 'Kasir',
                 'email' => 'kasir@simasdarsa.com',
                 'password' => bcrypt('password'),
                 'roles' => ['kasir'],
+                'permissions' => [
+                    'crud'  => ['create' => false, 'read' => true, 'update' => false, 'delete' => false],
+                    'menus' => [
+                        'dashboard', 'kasir.index', 'kasir.update-physical-stock',
+                        'stok.expiry-monitor', 'penjualan.index',
+                    ],
+                ],
             ],
         ];
 
